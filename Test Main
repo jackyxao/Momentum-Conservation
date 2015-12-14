@@ -1,0 +1,203 @@
+#To create moving objects with collisions
+import time
+import math
+from Tkinter import*
+
+#Object Class
+#Author: Jacky Xao
+#Purpose: To create a physical, moveable object
+#Fields:
+    #x: x-coord
+    #y: y-coord
+    #width: size of the square
+    #v: speed of the object
+    #d: direction of object, 360 deg from x axis
+    #colour: colour of square
+    #obj: the actual object
+            #a: acceleration of the object (un-used)
+            #ad: direction of acceleration
+            #t: duration of acceleration, t number of calls
+    #null: true if can't collide again
+#Methods:
+    #setV: sets the position and velocity
+    #draw: draws the square
+    #erase: erases the square
+    #move: moves the square
+class Object:
+    def __init__(self,x=1,y=1,w=5,v=1,d=0,a=0,c="black"):
+        self.x = float(x)
+        self.y = float(y)
+        self.width = w
+        self.v = float(v)
+        self.d = float(d)
+        #self.a = float(a)
+        self.colour = c
+        self.obj = 0
+        self.null = False
+
+    def draw(self,canvas):
+        #Draws the object
+        #self.obj = canvas.create_rectangle(self.x,self.y,self.x+self.width,self.y+self.width,fill = self.colour)
+        self.obj = canvas.create_oval(self.x,self.y,self.x+self.width,self.y+self.width,fill = self.colour)
+        canvas.update()
+
+    def erase(self,canvas):
+        #Erases the object
+        canvas.delete(self.obj)
+        #canvas.update()
+        
+    def move(self,canvas):
+        #moves the object based on velocity and direction
+        self.erase(canvas)
+        vx = self.v * math.cos(self.d * math.pi / 180)
+        vy = self.v * math.sin(self.d * math.pi / 180)
+        self.x = self.x + vx
+        self.y = self.y + vy
+        self.draw(canvas)
+        self.collideWall()
+        
+    def collideWall(self):
+        #Checks collision with wall. If hit, reverse the component direction
+        #add delay for collision
+        if self.x <= 0:
+            if self.d <= 180:
+                self.d = 180 - self.d
+            else:
+                self.d = 540 - self.d
+        elif self.x+self.width >= (int(canvas.winfo_width())-4):
+            if self.d <= 180:
+                self.d = 180 - self.d
+            else:
+                self.d = 540 - self.d
+        elif self.y <= 0:
+            self.d = 360 - self.d
+        elif self.y+self.width >= (int(canvas.winfo_height())-4):
+            self.d = 360 - self.d
+            
+        if self.d < 0:
+            self.d += 360
+        elif self.d > 360:
+            self.d -= 360
+
+    def collide(self,obj):
+        #Checks if two objects collide
+        #Add all 4 corners check
+        #Add a delay for the collision
+        if obj.x >= self.x-0.1 and obj.x <= self.x + self.width+0.1:
+            if obj.y >= self.y-0.1 and obj.y <= self.y + self.width+0.1:
+                self.collision(obj)
+        #elif obj.x+self.width >= self.x-0.1 and obj.x+self.width <= self.x + self.width+0.1:
+        #    if obj.y >= self.y-0.1 and obj.y <= self.y + self.width+0.1:
+        #        self.collision(obj)
+        elif self.x >= obj.x-0.1 and self.x <= obj.x + obj.width+0.1:
+            if self.y >= obj.y-0.1 and self.y <= obj.y + obj.width+0.1:
+                self.collision(obj)
+
+    def collision(self,obj):
+        #calls the momentum calculation and assign the final values
+        value = self.momentum(self.getArea(),obj.getArea(),self.v,self.d,obj.v,obj.d)
+        self.v = value[0]
+        self.d = value[1]
+        obj.v = value[2]
+        obj.d = value[3]
+        #print "Collide!"
+        
+
+    def getArea(self):
+        #gets the area of the object
+        #technically pointless but w.e.
+        #returns area
+        return self.width * self.width
+
+    def momentum(self,m1,m2,v1,d1,v2,d2):
+        #calculates the final velocities of two object
+            #in a perfectly elastic head on collision
+        #returns a tuple of vf1,df1,vf2,df2
+        vx1 = v1 * math.cos(d1 * math.pi / 180)
+        vx2 = v2 * math.cos(d2 * math.pi / 180)
+        vy1 = v1 * math.sin(d1 * math.pi / 180)
+        vy2 = v2 * math.sin(d2 * math.pi / 180)
+        
+        vxf1 = float(m1 - m2)/(m1 + m2) * (vx1 - vx2) + vx2
+        vxf2 = float(2 * m1)/(m1 + m2) * (vx1 - vx2) + vx2
+        vyf1 = float(m1 - m2)/(m1 + m2) * (vy1 - vy2) + vy2
+        vyf2 = float(2 * m1)/(m1 + m2) * (vy1 - vy2) + vy2
+        
+        vf1 = round(math.hypot(vxf1,vyf1),2)
+        vf2 = round(math.hypot(vxf2,vyf2),2)
+        df1 = round(math.degrees(math.atan2(vyf1,vxf1)),2)
+        df2 = round(math.degrees(math.atan2(vyf2,vxf2)),2)
+        
+        if df1 < 0:
+            df1 += 360
+        if df2 < 0:
+            df2 += 360
+            
+        return (vf1,df1,vf2,df2)
+        
+
+
+def keyPressed(event):
+    if event.char == "d":
+        objA.move(canvas)
+        objB.move(canvas)
+    """elif event.char == "s":
+    elif event.char == "a":
+    elif event.char == "w":"""
+#Main
+root = Tk()
+root.title("Objects")
+canvas = Canvas(root,width = 500,height = 500)
+canvas.config(background= "white")
+canvas.bind("<Key>",keyPressed)
+canvas.pack()
+canvas.focus_set()
+
+if True:
+    Test = []
+    Test.append(Object(x=47,y=25,w=50,v = 10,d = 37,c = "red"))
+    Test.append(Object(x= 45,y=100,w=10,v = 5,d = 10,c = "orange"))
+    Test.append(Object(x=100,y=200,w=30,v = 2,d = 50,c = "yellow"))
+    Test.append(Object(w=20,v = 1,d = 47,c = "green"))
+    Test.append(Object(x=200,y=451,w=40,v = 7,d = 82,c = "blue"))
+    Test.append(Object(x=45,y=350,w=50,v = 6,d = 44,c = "purple"))
+    for x in range(len(Test)):
+        Test[x].draw(canvas)
+    while True:
+        time.sleep(0.02)
+        for x in range(len(Test)):
+            Test[x].move(canvas)
+            for y in range(len(Test)):
+                if x != y:
+                    Test[x].collide(Test[y])
+        canvas.update()
+if False:
+    objA = Object(x=10,y=15,w=40,v = 5, d = 50,c = "red") 
+    objB = Object(x=260,y=15,w=50,v = 10, d = 160,c = "blue")
+    objA.draw(canvas)
+    objB.draw(canvas)
+    while True:
+        time.sleep(0.02)
+        objA.move(canvas)
+        objB.move(canvas)
+        objA.collide(objB)
+        canvas.update()
+
+if False:
+    Cradle = []
+    Cradle.append(Object(x=110,y=50,w=50,v = 15,d = 0,c = "red"))
+    Cradle.append(Object(x=161,y=50,w=50,v = 0,d = 0,c = "orange"))
+    Cradle.append(Object(x=212,y=50,w=50,v = 0,d = 0,c = "yellow"))
+    Cradle.append(Object(x=263,y=50,w=50,v = 0,d = 0,c = "green"))
+    Cradle.append(Object(x=314,y=50,w=50,v = 0,d = 0,c = "blue"))
+    for x in range(len(Cradle)):
+        Cradle[x].draw(canvas)
+    loop = True
+    while loop:
+        time.sleep(0.1)
+        for x in range(len(Cradle)):
+            Cradle[x].move(canvas)
+        for c in range(len(Cradle)-1):
+            Cradle[c].collide(Cradle[c+1])
+        canvas.update()
+#mainloop()
